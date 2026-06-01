@@ -2,74 +2,125 @@
 <html lang="ja">
 <head>
     <meta charset="utf-8" />
-    <title>Leaflet Polar Simple Weather Map</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaflet Polar Weather Map (Fixed Viewport)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <style>
-        html, body, #map {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            background: #1a2634; /* 背景が表示されていればこの色になります */
+        body {
+            margin: 0;
+            padding: 0;
+            background: #1a2634;
+            font-family: sans-serif;
+        }
+        /* 高さを%ではなく、画面全体の高さ(vh)で強制固定します */
+        #map {
+            width: 100%;
+            height: 90vh; /* 画面の高さの90%を強制的に使う */
+            background: #1a2634;
         }
         .map-title {
-            position: absolute; top: 15px; left: 15px; z-index: 1000;
-            background: rgba(0, 0, 0, 0.8); color: #fff; padding: 10px;
-            border-radius: 6px; font-family: sans-serif; font-size: 14px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px;
+            font-size: 14px;
+            text-align: center;
+            border-bottom: 1px solid #334e68;
         }
     </style>
 </head>
 <body>
 
-<div class="map-title">極射影天気図（シンプル安全版）</div>
+<div class="map-title">
+    <strong>極射影（ポーラーステレオ）天気図ビュー</strong>
+</div>
+
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.1/proj4leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-polylinedecorator/1.6.0/leaflet.polylineDecorator.min.js"></script>
 
 <script>
-    // 1. エラーを避けるため、念のためライブラリが存在するかチェック
-    if (typeof L !== 'undefined' && typeof L.Proj !== 'undefined') {
-        
-        // 2. 北極ポーラーステレオ (EPSG:3995) の定義
-        const crs = new L.Proj.CRS(
-            'EPSG:3995',
-            '+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs',
-            {
-                resolutions: [16384, 8192, 4096, 2048, 1024, 512, 256, 128],
-                origin: [-30000000, 30000000]
-            }
-        );
-
-        // 3. 地図の初期化
-        const map = L.map('map', {
-            crs: crs,
-            center: [40, 140], // 日本付近
-            zoom: 3
-        });
-
-        // 4. シンプルな線で経緯線を描画（プラグイン不使用）
-        const gridStyle = { color: '#334e68', weight: 1, fill: false };
-        for (let lat = 20; lat <= 80; lat += 20) {
-            let coords = [];
-            for (let lon = -180; lon <= 180; lon += 10) { coords.push([lat, lon]); }
-            L.polygon(coords, gridStyle).addTo(map);
+    // 1. 北極ポーラーステレオ (EPSG:3995) の定義
+    const crs = new L.Proj.CRS(
+        'EPSG:3995',
+        '+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs',
+        {
+            resolutions: [16384, 8192, 4096, 2048, 1024, 512, 256, 128],
+            origin: [-30000000, 30000000]
         }
+    );
 
-        // 5. 前線（まずはシンプルな太い赤・青の線として描画）
-        // ※デコレータープラグインがエラーを起こす可能性を排除しました
-        L.polyline([[45, 150], [38, 143], [32, 138]], { color: '#0070f3', weight: 5 }).addTo(map); // 寒冷
-        L.polyline([[45, 150], [48, 160], [49, 172]], { color: '#ff0033', weight: 5 }).addTo(map); // 温暖
+    // 2. 地図の初期化（日本付近 [北緯40度、東経140度] を中心に設定）
+    const map = L.map('map', {
+        crs: crs,
+        center: [40, 140], 
+        zoom: 3,
+        minZoom: 1,
+        maxZoom: 6
+    });
 
-        // 6. 低気圧・高気圧マーク
-        const lowIcon = L.divIcon({
-            html: '<div style="color: #ff0033; font-size: 30px; font-weight: bold;">L</div>',
-            className: 'weather-label', iconSize: [30, 30]
-        });
-        L.marker([46, 149], { icon: lowIcon }).addTo(map);
-
-    } else {
-        alert('ライブラリの読み込みに失敗している可能性があります。');
+    // 3. 経緯線（グリッド）を自前で描画
+    const gridOptions = { color: '#334e68', weight: 1, opacity: 0.6, fill: false, interactive: false };
+    
+    // 緯線（北緯20度〜80度まで10度刻みの同心円）
+    for (let lat = 20; lat <= 80; lat += 10) {
+        let coords = [];
+        for (let lon = -180; lon <= 180; lon += 5) { coords.push([lat, lon]); }
+        L.polygon(coords, gridOptions).addTo(map);
     }
+    // 経線（15度刻みで放射状に伸びる線）
+    for (let lon = -180; lon < 180; lon += 15) {
+        L.polyline([[10, lon], [90, lon]], gridOptions).addTo(map);
+    }
+
+    // --- 天気図オブジェクトの描画 ---
+
+    // A. 寒冷前線（青い線 ＋ 三角マーク）
+    const coldFrontPoints = [[45, 150], [38, 143], [32, 138], [25, 132]];
+    const coldLine = L.polyline(coldFrontPoints, { color: '#0070f3', weight: 4 }).addTo(map);
+    
+    L.polylineDecorator(coldLine, {
+        patterns: [{
+            offset: 25, repeat: 35,
+            symbol: L.Symbol.path({
+                path: 'M 0,0 L 8,-8 L 16,0 Z',
+                pathOptions: { color: '#0070f3', fillColor: '#0070f3', fillOpacity: 1, weight: 1 }
+            })
+        }]
+    }).addTo(map);
+
+    // B. 温暖前線（赤い線 ＋ 半円マーク）
+    const warmFrontPoints = [[45, 150], [48, 160], [49, 172], [47, 185]];
+    const warmLine = L.polyline(warmFrontPoints, { color: '#ff0033', weight: 4 }).addTo(map);
+    
+    L.polylineDecorator(warmLine, {
+        patterns: [{
+            offset: 25, repeat: 35,
+            symbol: L.Symbol.path({
+                path: 'M 0,0 A 6,6 0 0,1 14,0 Z',
+                pathOptions: { color: '#ff0033', fillColor: '#ff0033', fillOpacity: 1, weight: 1 }
+            })
+        }]
+    }).addTo(map);
+
+    // C. 低気圧（L）マーク
+    const lowIcon = L.divIcon({
+        html: '<div style="color: #ff0033; font-size: 28px; font-weight: bold; font-family: \'Arial Black\', sans-serif;">L</div>',
+        className: 'weather-label', iconSize: [30, 30], iconAnchor: [15, 20]
+    });
+    L.marker([46, 149], { icon: lowIcon }).addTo(map);
+
+    // D. 高気圧（H）マーク
+    const highIcon = L.divIcon({
+        html: '<div style="color: #0070f3; font-size: 28px; font-weight: bold; font-family: \'Arial Black\', sans-serif;">H</div>',
+        className: 'weather-label', iconSize: [30, 30], iconAnchor: [15, 20]
+    });
+    L.marker([33, 122], { icon: highIcon }).addTo(map);
+
 </script>
 </body>
 </html>
