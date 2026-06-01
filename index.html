@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet Polar Stereographic Example</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; width: 100%; background: #aad3df; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- 1. 必要なライブラリの読み込み -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.1/proj4leaflet.min.js"></script>
+
+<script>
+    // 2. 北極ポーラーステレオ (EPSG:3995) の定義
+    // Proj4の定義文と、解像度(resolutions)、原点(origin)を設定します
+    var crs = new L.Proj.CRS(
+        'EPSG:3995',
+        '+proj=stere +lat_0=90 +lat_ts=71 +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs',
+        {
+            resolutions: [16384, 8192, 4096, 2048, 1024, 512, 256, 128],
+            origin: [-30000000, 30000000] // 使用するタイルマップの原点に合わせて調整
+        }
+    );
+
+    // 3. 地図の初期化（独自CRSを指定）
+    var map = L.map('map', {
+        crs: crs,
+        continuousWorld: true,
+        worldCopyJump: false
+    }).setView([90, 0], 1); // 北極点を中心に設定
+
+    // ポーラーステレオに対応したタイルレイヤー（例：NOAAやNASA、独自配信のWMTSなど）
+    // ※通常のOpenStreetMapのURLを入れると歪むか表示されません
+    L.tileLayer('https://{s}.tiles.maps.eox.at/wms?service=WMS&version=1.1.1&request=GetMap&layers=coastline&styles=&format=image/png&srs=EPSG:3995...', {
+        attribution: 'Tile data test'
+    }).addTo(map);
+
+    // マーカーなども、自動的に内部で座標変換されて正しい位置（北極付近）にピンポイントで立ちます
+    L.marker([80, 45]).addTo(map).bindPopup('北緯80度、東経45度付近');
+</script>
+
+</body>
+</html>
